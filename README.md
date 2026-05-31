@@ -76,7 +76,7 @@ Abre tu navegador en: `http://localhost:8095`
 ---
 
 ## Fuentes de Datos
-|------------------|------------------------------------|-------------------------|
+
 | Fuente           | Descripción                        | Tipo de Datos           |
 |------------------|------------------------------------|-------------------------|
 | **ADSB.lol**     | API pública de rastreo aeronautico | Aeronaves               |
@@ -88,7 +88,7 @@ Abre tu navegador en: `http://localhost:8095`
 | **GeaMap**       | Datos geográficos                  | Puntos de interés       |
 | **ThousandEyes** | Monitor de red                     | Estado de red           |
 | **DownDetector** | Estado de servicios                | Incidencias             |
-|------------------|------------------------------------|-------------------------|
+
 ---
 
 ## Gamma de Colores - Altitud de Aeronaves
