@@ -1,12 +1,15 @@
 # OJO DE DIOS - Global Operations Aircraft Tracking
 
-> *"Hecho con amor y dedicación mientras mi Padre, El Rey del Tubey, pasaba sus últimas penurias en Venezuela. Este proyecto me mantuvo la mente tranquila y ocupada durante esos momentos difíciles."*
+> *"Hecho con amor y dedicación mientras mi Padre, El Rey del Tubey, pasaba sus últimas días convaleciente y enfermo hasta su muerte el 13-05-2026 en Venezuela. Este proyecto me mantuvo la mente tranquila y ocupada durante esos momentos difíciles."*
 
 ---
+<img width="1440" height="796" alt="image" src="https://github.com/user-attachments/assets/27565f94-f5d2-4026-a040-2391064abc53" />
+
+
 
 ## Descripción
 
-**OJO DE DIOS** es un sistema de monitoreo en tiempo real de aeronaves, barcos, satélites y otras fuentes de datos mediante un mapa interactivo. El proyecto visualiza posiciones de aeronaves ADS-B, datos de ENAIRE (espacio aéreo español), notificaciones NOTAM, y otras fuentes de inteligencia operacional.
+**OJO DE DIOS** es un sistema de monitoreo en tiempo real de Aeronaves, Barcos, Satélites y otras fuentes de datos mediante un mapa interactivo. El proyecto visualiza posiciones de aeronaves ADS-B, datos de ENAIRE (espacio aéreo español), notificaciones NOTAM, y otras fuentes de inteligencia operacional.
 
 ### Características Principales
 
@@ -77,35 +80,35 @@ Abre tu navegador en: `http://localhost:8095`
 
 ## Fuentes de Datos
 
-| Fuente | Descripción | Tipo de Datos |
-|--------|-------------|---------------|
-| **ADSB.lol** | API pública de rastreo aeronautico | Aeronaves |
-| **ENAIRE** | Espacio aéreo español | Aeronaves, zonas drones |
-| **N2YO** | Satélites en tiempo real | Satélites orbitales |
-| **Celestrak** | Base de datos de satélites | Catálogo orbital |
-| **OurAirports** | Aeropuertos mundial | Aeródromos |
-| **AISStream** | Tráfico marítimo | Barcos |
-| **GeaMap** | Datos geográficos | Puntos de interés |
-| **ThousandEyes** | Monitor de red | Estado de red |
-| **DownDetector** | Estado de servicios | Incidencias |
+| Fuente           | Descripción                        | Tipo de Datos           |
+|------------------|------------------------------------|-------------------------|
+| **ADSB.lol**     | API pública de rastreo aeronautico | Aeronaves               |
+| **ENAIRE**       | Espacio aéreo español              | Aeronaves, zonas drones |
+| **N2YO**         | Satélites en tiempo real           | Satélites orbitales     |
+| **Celestrak**    | Base de datos de satélites         | Catálogo orbital        |
+| **OurAirports**  | Aeropuertos mundial                | Aeródromos              |
+| **AISStream**    | Tráfico marítimo                   | Barcos                  |
+| **GeaMap**       | Datos geográficos                  | Puntos de interés       |
+| **ThousandEyes** | Monitor de red                     | Estado de red           |
+| **DownDetector** | Estado de servicios                | Incidencias             |
 
 ---
 
 ## Gamma de Colores - Altitud de Aeronaves
 
 Los colores de las aeronaves y la barra de altitud siguen el esquema de **ADS-B.lol**:
-
-| Altitud (pies) | Color | Descripción |
-|----------------|-------|-------------|
-| < 500 | 🔴 Rojo | Muy baja altitud |
-| 500 - 1,000 | 🟠 Naranja | Baja altitud |
-| 1,000 - 2,000 | 🟡 Amarillo | Ascension/Descenso |
-| 2,000 - 5,000 | 🟢 Verde | Tráfico regional |
-| 5,000 - 10,000 | 🔵 Cian | Tráfico nacional |
-| 10,000 - 20,000 | 🔵 Azul | Alta altitud |
-| 20,000 - 40,000 | 🟣 Púrpura/Magenta | Muy alta altitud |
-| > 40,000 | 🔴 Rojo (ciclo) | Extremadamente alta |
-
+|-----------------|--------------------|---------------------|
+| Altitud (pies)  | Color              | Descripción         |
+|-----------------|--------------------|---------------------|
+| < 500           | 🔴 Rojo            | Muy baja altitud    |
+| 500 - 1,000     | 🟠 Naranja         | Baja altitud        |
+| 1,000 - 2,000   | 🟡 Amarillo        | Ascension/Descenso  |
+| 2,000 - 5,000   | 🟢 Verde           | Tráfico regional    |
+| 5,000 - 10,000  | 🔵 Cian            | Tráfico nacional    |
+| 10,000 - 20,000 | 🔵 Azul            | Alta altitud        |
+| 20,000 - 40,000 | 🟣 Púrpura/Magenta | Muy alta altitud    |
+| > 40,000        | 🔴 Rojo (ciclo)    | Extremadamente alta |
+|-----------------|--------------------|---------------------|
 ### Fórmula de Colores
 
 ```python
@@ -130,7 +133,7 @@ Las zonas de vuelo de drones se muestran como **polígonos** con los siguientes 
 
 | Tipo de Zona | Color |
 |--------------|-------|
-| Aeródromos | 🟠 Naranja |
+| Aeródromos   | 🟠 Naranja |
 | Aeromodelismo | 🟣 Púrpura |
 | Zonas Aeródromos | 🟢 Verde |
 | Espacio Controlado (EAC/FIZ) | 🔵 Azul |
@@ -187,7 +190,7 @@ MIT License - Libre uso y modificación.
 
 ## Dedicatoria
 
-> *"Este proyecto fue creado durante los momentos más difíciles de mi vida, mientras mi padre enfrentaba su enfermedad terminal en Venezuela. Trabajar en esto me helped mantener mi mente ocupada y en calma. Para ti, Papá. Tu memory vive en cada línea de código."*
+> *"Este proyecto fue creado durante los momentos más difíciles de mi vida, mientras mi padre enfrentaba su enfermedad terminal en Venezuela. Trabajar en esto me ayudó a mantener mi mente ocupada y en calma. Para ti, Papá. Tu memoria vive en cada línea de código."*
 
 **Juan Carlos Suárez** - Mayo 2026
 
