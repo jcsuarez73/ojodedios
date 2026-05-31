@@ -3,7 +3,8 @@
 > *"Hecho con amor y dedicación mientras mi Padre, El Rey del Tubey, pasaba sus últimas días convaleciente y enfermo hasta su muerte el 13-05-2026 en Venezuela. Este proyecto me mantuvo la mente tranquila y ocupada durante esos momentos difíciles."*
 
 ---
-<img width="1457" height="793" alt="image" src="https://github.com/user-attachments/assets/30850f69-f226-4a19-b7a0-d780c5bbcb59" />
+<img width="1440" height="796" alt="image" src="https://github.com/user-attachments/assets/27565f94-f5d2-4026-a040-2391064abc53" />
+
 
 
 ## Descripción
