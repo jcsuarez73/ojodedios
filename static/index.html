@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OJO DE DIOS // GLOBAL TRACKING</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0a0a;
+      --bg-secondary: #080808;
+      --bg-tertiary: #0f0f0f;
+      --bg-panel: rgba(10, 10, 10, 0.92);
+      --border-primary: rgba(8, 145, 178, 0.30);
+      --border-secondary: rgba(8, 145, 178, 0.45);
+      --text-primary: rgb(209, 213, 219);
+      --text-secondary: rgb(34, 211, 238);
+      --text-muted: rgb(8, 145, 178);
+      --text-heading: rgb(207, 250, 254);
+      --scrollbar-thumb: rgba(255, 255, 255, 0.15);
+      --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      overflow: hidden;
+    }
+
+    /* === MAP CONTAINER === */
+    #map-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 1;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* === CRT EFFECTS === */
+    .crt-vignette {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+      z-index: 2;
+      background: radial-gradient(circle, transparent 40%, rgba(0,0,0,0.8) 100%);
+    }
+
+    .scanlines {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+      z-index: 3;
+      opacity: 0.08;
+      background: linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px);
+      background-size: 100% 4px;
+    }
+
+    /* === HEADER === */
+    .header {
+      position: fixed;
+      top: 24px;
+      left: 24px;
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      pointer-events: none;
+    }
+
+    .header-icon {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .target-reticle {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid var(--text-secondary);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .target-reticle::before {
+      content: '';
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: rgba(34, 211, 238, 0.3);
+    }
+
+    .target-reticle::after {
+      content: '';
+      position: absolute;
+      top: -6px;
+      bottom: -6px;
+      width: 1px;
+      background: var(--text-secondary);
+    }
+
+    .header-title {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header-title h1 {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: 0.4em;
+      color: var(--text-primary);
+      text-shadow: 0 0 10px rgba(34, 211, 238, 0.45), 0 0 20px rgba(34, 211, 238, 0.15);
+    }
+
+    .header-title h1 span {
+      color: var(--text-secondary);
+    }
+
+    .header-title .subtitle {
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 0.3em;
+      margin-top: 2px;
+      margin-left: 2px;
+    }
+
+    /* === SYSTEM METRICS === */
+    .system-metrics {
+      position: fixed;
+      top: 8px;
+      left: 24px;
+      z-index: 200;
+      font-size: 11px;
+      letter-spacing: widests;
+      color: rgba(34, 211, 238, 0.5);
+      pointer-events: none;
+    }
+
+    /* === LEFT PANEL === */
+    .left-panel {
+      position: fixed;
+      left: 24px;
+      top: 96px;
+      bottom: 36px;
+      width: 320px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-primary);
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .left-panel.collapsed {
+      transform: translateX(-340px);
+    }
+
+    .panel-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-primary);
+      background: rgba(8, 145, 178, 0.1);
+    }
+
+    .panel-header h3 {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      color: var(--text-secondary);
+    }
+
+    .panel-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+    }
+
+    .panel-content::-webkit-scrollbar {
+      width: 5px;
+    }
+
+    .panel-content::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .panel-content::-webkit-scrollbar-thumb {
+      background: var(--scrollbar-thumb);
+      border-radius: 10px;
+    }
+
+    .panel-content::-webkit-scrollbar-thumb:hover {
+      background: var(--scrollbar-thumb-hover);
+    }
+
+    /* === LAYER TOGGLES === */
+    .layer-section {
+      margin-bottom: 16px;
+    }
+
+    .layer-section h4 {
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid var(--border-primary);
+    }
+
+    .layer-item {
+      display: flex;
+      align-items: center;
+      padding: 6px 8px;
+      margin: 4px 0;
+      border-radius: 4px;
+      transition: background 0.2s;
+      cursor: pointer;
+    }
+
+    .layer-item:hover {
+      background: rgba(8, 51, 68, 0.2);
+    }
+
+    .layer-item input[type="checkbox"] {
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border: 1px solid var(--border-secondary);
+      background: transparent;
+      margin-right: 10px;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .layer-item input[type="checkbox"]:checked {
+      background: var(--text-secondary);
+      border-color: var(--text-secondary);
+    }
+
+    .layer-item input[type="checkbox"]:checked::after {
+      content: '';
+      position: absolute;
+      left: 4px;
+      top: 1px;
+      width: 4px;
+      height: 8px;
+      border: solid var(--bg-primary);
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+
+    .layer-item label {
+      font-size: 11px;
+      text-transform: uppercase;
+      cursor: pointer;
+      flex: 1;
+      letter-spacing: 0.05em;
+    }
+
+    .layer-color {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-left: 8px;
+    }
+
+    /* === SOURCES LIST === */
+    .source-item {
+      background: rgba(8, 145, 178, 0.08);
+      border: 1px solid var(--border-primary);
+      padding: 8px 10px;
+      margin: 6px 0;
+      border-radius: 4px;
+    }
+
+    .source-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+
+    .source-name {
+      font-weight: 700;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .source-status {
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      letter-spacing: 0.1em;
+    }
+
+    .source-status.live {
+      background: #22c55e;
+      color: #000;
+    }
+
+    .source-status.stale {
+      background: #eab308;
+      color: #000;
+    }
+
+    .source-status.offline {
+      background: #666;
+      color: #fff;
+    }
+
+    .source-details {
+      font-size: 9px;
+      color: var(--text-muted);
+    }
+
+    /* === LEFT PANEL TOGGLE === */
+    .panel-toggle {
+      position: fixed;
+      left: 0;
+      top: 140px;
+      z-index: 201;
+      width: 24px;
+      height: 80px;
+      background: rgba(8, 145, 178, 0.2);
+      border: 1px solid var(--border-primary);
+      border-left: none;
+      border-radius: 0 4px 4px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .panel-toggle:hover {
+      background: rgba(8, 145, 178, 0.4);
+    }
+
+    .panel-toggle.left {
+      left: 344px;
+    }
+
+    .panel-toggle.left.collapsed {
+      left: 24px;
+    }
+
+    .panel-toggle span {
+      font-size: 10px;
+      color: var(--text-muted);
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      letter-spacing: 0.2em;
+    }
+
+    /* === RIGHT PANEL === */
+    .right-panel {
+      position: fixed;
+      right: 24px;
+      top: 96px;
+      bottom: 80px;
+      width: 360px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-primary);
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .right-panel.collapsed {
+      transform: translateX(384px);
+    }
+
+    .right-panel-toggle {
+      position: fixed;
+      right: 384px;
+      top: 140px;
+      z-index: 201;
+      width: 24px;
+      height: 80px;
+      background: rgba(8, 145, 178, 0.2);
+      border: 1px solid var(--border-primary);
+      border-right: none;
+      border-radius: 4px 0 0 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .right-panel-toggle:hover {
+      background: rgba(8, 145, 178, 0.4);
+    }
+
+    .right-panel-toggle.collapsed {
+      right: 24px;
+    }
+
+    .right-panel-toggle span {
+      font-size: 10px;
+      color: var(--text-muted);
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      letter-spacing: 0.2em;
+    }
+
+    /* === COORDINATE BAR === */
+    .coordinate-bar {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      background: rgba(10, 10, 10, 0.9);
+      border: 1px solid rgba(8, 145, 178, 0.4);
+      border-bottom: 2px solid #0891b2;
+      padding: 6px 20px;
+      backdrop-filter: blur(8px);
+      cursor: pointer;
+    }
+
+    .coord-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 120px;
+    }
+
+    .coord-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      letter-spacing: 0.2em;
+    }
+
+    .coord-value {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-secondary);
+    }
+
+    .coord-divider {
+      width: 1px;
+      height: 24px;
+      background: var(--border-primary);
+    }
+
+    /* === ALTITUDE SCALE === */
+    .altitude-scale {
+      position: fixed;
+      bottom: 90px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 199;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+      background: rgba(10, 10, 10, 0.9);
+      border: 1px solid rgba(8, 145, 178, 0.4);
+      border-bottom: 2px solid #0891b2;
+      padding: 0;
+      backdrop-filter: blur(8px);
+    }
+
+    .altitude-bar {
+      width: 320px;
+      height: 14px;
+      background: linear-gradient(
+        to right,
+        #ff3333 0%,
+        #ff4d00 8%,
+        #ff9900 16%,
+        #ffdd00 25%,
+        #80ff00 35%,
+        #00ff80 50%,
+        #00ccff 60%,
+        #0066ff 72%,
+        #6600ff 85%,
+        #cc00ff 92%,
+        #ff0066 100%
+      );
+      border-radius: 2px;
+      box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+    }
+
+    .altitude-labels {
+      display: flex;
+      justify-content: space-between;
+      width: 320px;
+      padding: 4px 0 0 0;
+      font-size: 8px;
+      font-weight: 700;
+    }
+
+    .altitude-labels span {
+      color: var(--text-secondary);
+      text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+    }
+
+    .altitude-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 6px 16px 8px 16px;
+    }
+
+    .altitude-label {
+      font-size: 9px;
+      color: var(--text-muted);
+      letter-spacing: 0.2em;
+      text-align: center;
+      padding-bottom: 4px;
+      margin-bottom: 2px;
+    }
+
+    /* === STATS === */
+    .stats-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+    }
+
+    .stat-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+    }
+
+    .stat-dot.healthy {
+      background: #22c55e;
+      box-shadow: 0 0 4px rgba(34, 197, 94, 0.5);
+    }
+
+    .stat-dot.stale {
+      background: #eab308;
+      box-shadow: 0 0 4px rgba(234, 179, 8, 0.5);
+    }
+
+    .stat-dot.offline {
+      background: #ef4444;
+      box-shadow: 0 0 4px rgba(239, 68, 68, 0.5);
+    }
+
+    .stat-label {
+      color: var(--text-muted);
+    }
+
+    .stat-count {
+      color: var(--text-secondary);
+      font-weight: 700;
+    }
+
+    /* === MAP MARKERS === */
+    .airplane-marker {
+      background: transparent;
+      border: none;
+    }
+
+    /* === POPUP === */
+    .leaflet-popup-content-wrapper {
+      background: rgba(10, 14, 20, 0.96);
+      border-radius: 2px;
+      border: 1px solid rgba(8, 145, 178, 0.35);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .leaflet-popup-content {
+      color: #d1d5db;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      min-width: 200px;
+      margin: 12px 16px;
+    }
+
+    .leaflet-popup-tip {
+      background: rgba(10, 14, 20, 0.96);
+      border: 1px solid rgba(8, 145, 178, 0.35);
+    }
+
+    .popup-title {
+      font-weight: 700;
+      font-size: 14px;
+      margin-bottom: 8px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .popup-table {
+      font-size: 11px;
+      color: #ccc;
+      width: 100%;
+    }
+
+    .popup-table td {
+      padding: 2px 0;
+    }
+
+    .popup-table td:first-child {
+      color: var(--text-muted);
+      padding-right: 8px;
+    }
+
+    .popup-source {
+      font-size: 9px;
+      color: #666;
+      margin-top: 8px;
+      font-style: italic;
+    }
+
+    /* === LEAFLET OVERRIDES === */
+    .leaflet-control-zoom {
+      display: none;
+    }
+
+    .leaflet-control-attribution {
+      display: none;
+    }
+
+    .leaflet-popup-close-button {
+      color: var(--text-muted) !important;
+    }
+
+    .leaflet-popup-close-button:hover {
+      color: var(--text-secondary) !important;
+    }
+  </style>
+</head>
+<body>
+  <!-- MAP CONTAINER -->
+  <div id="map-container">
+    <div id="map"></div>
+  </div>
+
+  <!-- CRT EFFECTS -->
+  <div class="crt-vignette"></div>
+  <div class="scanlines"></div>
+
+  <!-- SYSTEM METRICS -->
+  <div class="system-metrics">
+    OPTIC VIS:113 SRC:180 DENS:1.42 0.8ms
+  </div>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-icon">
+      <div class="target-reticle"></div>
+    </div>
+    <div class="header-title">
+      <h1>OJO <span>DE DIOS</span></h1>
+      <div class="subtitle">GLOBAL OPERATIONS AIRCRAFT TRACKING</div>
+    </div>
+  </div>
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel" id="leftPanel">
+    <div class="panel-header">
+      <h3>DATA LAYERS</h3>
+    </div>
+    <div class="panel-content">
+      <!-- INTELLIGENCE FEEDS -->
+      <div class="layer-section">
+        <h4>INTELLIGENCE FEEDS</h4>
+        <div class="layer-item">
+          <input type="checkbox" id="chk-enaire" checked onchange="toggle('enaire')">
+          <label for="chk-enaire">ENAIRE</label>
+          <div class="layer-color" style="background: #00ffff;"></div>
+        </div>
+        <div class="layer-item">
+          <input type="checkbox" id="chk-adsb" checked onchange="toggle('adsb')">
+          <label for="chk-adsb">ADSB.lol</label>
+          <div class="layer-color" style="background: #ff6600;"></div>
+        </div>
+        <div class="layer-item">
+          <input type="checkbox" id="chk-n2yo" checked onchange="toggle('n2yo')">
+          <label for="chk-n2yo">N2YO Satellites</label>
+          <div class="layer-color" style="background: #ffff00;"></div>
+        </div>
+        <div class="layer-item">
+          <input type="checkbox" id="chk-celestrak" checked onchange="toggle('celestrak')">
+          <label for="chk-celestrak">Celestrak</label>
+          <div class="layer-color" style="background: #ff00ff;"></div>
+        </div>
+        <div class="layer-item">
+          <input type="checkbox" id="chk-downdetector" checked onchange="toggle('downdetector')">
+          <label for="chk-downdetector">Downdetector</label>
+          <div class="layer-color" style="background: #ff0000;"></div>
+        </div>
+        <div class="layer-item">
+          <input type="checkbox" id="chk-airnavradar" checked onchange="toggle('airnavradar')">
+          <label for="chk-airnavradar">AirNav Radar</label>
+          <div class="layer-color" style="background: #00ff00;"></div>
+        </div>
+        <div class="layer-item">
+          <input type="checkbox" id="chk-ourairports" checked onchange="toggle('ourairports')">
+          <label for="chk-ourairports">OurAirports</label>
+          <div class="layer-color" style="background: #ffaa00;"></div>
+        </div>
+        <div class="layer-item">
+          <input type="checkbox" id="chk-aisstream" checked onchange="toggle('aisstream')">
+          <label for="chk-aisstream">AISStream (Maritime)</label>
+          <div class="layer-color" style="background: #0088ff;"></div>
+        </div>
+        <div class="layer-item">
+          <input type="checkbox" id="chk-drones" checked onchange="toggle('drones')">
+          <label for="chk-drones">Drones ENAIRE</label>
+          <div class="layer-color" style="background: #ff5555;"></div>
+        </div>
+        <div class="layer-item">
+          <input type="checkbox" id="chk-geamap" checked onchange="toggle('geamap')">
+          <label for="chk-geamap">GeaMap</label>
+          <div class="layer-color" style="background: #a862fc;"></div>
+        </div>
+        <div class="layer-item">
+          <input type="checkbox" id="chk-thousandeyes" checked onchange="toggle('thousandeyes')">
+          <label for="chk-thousandeyes">ThousandEyes</label>
+          <div class="layer-color" style="background: #ffffff;"></div>
+        </div>
+        <div class="layer-item">
+          <input type="checkbox" id="chk-races" checked onchange="toggle('races')">
+          <label for="chk-races">Races.es</label>
+          <div class="layer-color" style="background: #88ff00;"></div>
+        </div>
+      </div>
+
+      <!-- DATA SOURCES -->
+      <div class="layer-section">
+        <h4>DATA SOURCES STATUS</h4>
+        <div id="sources-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEFT PANEL TOGGLE -->
+  <div class="panel-toggle left" id="leftToggle" onclick="toggleLeftPanel()">
+    <span>LAYERS</span>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel" id="rightPanel">
+    <div class="panel-header">
+      <h3>INTELLIGENCE</h3>
+    </div>
+    <div class="panel-content">
+      <div class="layer-section">
+        <h4>SELECTED ENTITY</h4>
+        <div id="selected-entity" style="padding: 12px; color: var(--text-muted); font-size: 11px;">
+          Click on an object to view details
+        </div>
+      </div>
+      <div class="layer-section">
+        <h4>RECENT ACTIVITY</h4>
+        <div id="activity-log" style="font-size: 10px; color: var(--text-muted);">
+          Waiting for data...
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL TOGGLE -->
+  <div class="right-panel-toggle" id="rightToggle" onclick="toggleRightPanel()">
+    <span>INTEL</span>
+  </div>
+
+  <!-- COORDINATE BAR -->
+  <div class="coordinate-bar" onclick="cycleMapStyle()">
+    <div class="coord-group">
+      <div class="coord-label">COORDINATES</div>
+      <div class="coord-value" id="coords-display">0.0000, 0.0000</div>
+    </div>
+    <div class="coord-divider"></div>
+    <div class="coord-group">
+      <div class="coord-label">LOCATION</div>
+      <div class="coord-value" id="location-display" style="font-size: 12px; max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Hover over map...</div>
+    </div>
+    <div class="coord-divider"></div>
+    <div class="coord-group">
+      <div class="coord-label">STYLE</div>
+      <div class="coord-value" id="style-display">DEFAULT</div>
+    </div>
+    <div class="coord-divider"></div>
+    <div class="stats-group" id="stats-display">
+      <!-- Populated dynamically -->
+    </div>
+  </div>
+
+  <!-- ALTITUDE SCALE BAR -->
+  <div class="altitude-scale">
+    <div class="altitude-label">ALTITUDE</div>
+    <div class="altitude-container">
+      <div class="altitude-bar"></div>
+    </div>
+    <div class="altitude-labels">
+      <span>.5K</span>
+      <span>1K</span>
+      <span>2K</span>
+      <span>5K</span>
+      <span>10K</span>
+      <span>20K</span>
+      <span>40K</span>
+      <span>60K</span>
+    </div>
+  </div>
+
+  <script>
+    // === CONFIGURATION ===
+    let host = window.location.hostname;
+    let port = window.location.port || "8095";
+    if (host === "0.0.0.0" || host === "") {
+      host = "localhost";
+    }
+
+    // === MAP SETUP ===
+    const map = L.map('map', {
+      preferCanvas: true,
+      zoomControl: false,
+      attributionControl: false
+    }).setView([40.4, -3.7], 5);
+
+    // Dark basemap - CartoDB Dark Matter
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 19,
+      subdomains: 'abcd'
+    }).addTo(map);
+
+    // === STATE ===
+    let state = {};
+    let leftPanelOpen = true;
+    let rightPanelOpen = true;
+    let mapStyle = 'DEFAULT';
+    const styles = ['DEFAULT', 'SATELLITE'];
+
+    // === COLOR MAPPING ===
+    function getColor(source) {
+      const colors = {
+        'enaire': '#00ffff',
+        'adsb': '#ff6600',
+        'n2yo': '#ffff00',
+        'celestrak': '#ff00ff',
+        'downdetector': '#ff0000',
+        'airnavradar': '#00ff00',
+        'ourairports': '#ffaa00',
+        'aisstream': '#0088ff',
+        'drones': '#ff5555',
+        'geamap': '#a862fc',
+        'thousandeyes': '#ffffff',
+        'races': '#88ff00',
+        'custom': '#ff00bb'
+      };
+      return colors[source.toLowerCase()] || '#ffffff';
+    }
+
+    // === UI TOGGLES ===
+    function toggleLeftPanel() {
+      leftPanelOpen = !leftPanelOpen;
+      const panel = document.getElementById('leftPanel');
+      const toggle = document.getElementById('leftToggle');
+      panel.classList.toggle('collapsed', !leftPanelOpen);
+      toggle.classList.toggle('collapsed', !leftPanelOpen);
+    }
+
+    function toggleRightPanel() {
+      rightPanelOpen = !rightPanelOpen;
+      const panel = document.getElementById('rightPanel');
+      const toggle = document.getElementById('rightToggle');
+      panel.classList.toggle('collapsed', !rightPanelOpen);
+      toggle.classList.toggle('collapsed', !rightPanelOpen);
+    }
+
+    function cycleMapStyle() {
+      const idx = styles.indexOf(mapStyle);
+      mapStyle = styles[(idx + 1) % styles.length];
+      document.getElementById('style-display').textContent = mapStyle;
+    }
+
+    // === MOUSE COORDINATES ===
+    map.on('mousemove', function(e) {
+      document.getElementById('coords-display').textContent =
+        `${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)}`;
+    });
+
+    // === POPUP BUILDER ===
+    function buildPopup(p) {
+      const popupColor = p.color || getColor(p.source);
+      let content = `<div class="popup-title" style="color: ${popupColor}">${p.name || p.id || 'UNKNOWN'}</div>`;
+
+      if (p.subtype === "aircraft" || p.source.toLowerCase() === "adsb" || p.source.toLowerCase() === "enaire") {
+        content += `<table class="popup-table">`;
+        if (p.registration) content += `<tr><td>Matrícula:</td><td>${p.registration}</td></tr>`;
+        if (p.aircraft_type) content += `<tr><td>Aeronave:</td><td>${p.aircraft_type}</td></tr>`;
+        if (p.category) content += `<tr><td>Categoría:</td><td>${p.category}</td></tr>`;
+        if (p.id) content += `<tr><td>ICAO24:</td><td>${p.id}</td></tr>`;
+        if (p.alt) content += `<tr><td>Altitud:</td><td>${p.alt} ft</td></tr>`;
+        if (p.speed || p.gs) content += `<tr><td>GS:</td><td>${Math.round(p.speed || p.gs)} kts</td></tr>`;
+        if (p.heading || p.track) content += `<tr><td>Rumbo:</td><td>${Math.round(p.heading || p.track)}°</td></tr>`;
+        content += `</table>`;
+      } else {
+        content += `<div style="font-size: 11px; color: #888;">
+          <div><b>Tipo:</b> ${p.subtype || 'N/A'}</div>
+          ${p.id ? `<div><b>ID:</b> ${p.id}</div>` : ''}
+        </div>`;
+      }
+
+      content += `<div class="popup-source"><i>${p.source}</i></div>`;
+      return content;
+    }
+
+    // === RENDER SOURCES ===
+    function formatRelativeTime(isoString) {
+      if (!isoString) return "UNKNOWN";
+      const date = new Date(isoString);
+      const now = new Date();
+      const diffMs = now - date;
+      const diffSec = Math.floor(diffMs / 1000);
+      const diffMin = Math.floor(diffSec / 60);
+      const diffHour = Math.floor(diffMin / 60);
+      if (diffSec < 60) return `${diffSec}s ago`;
+      if (diffMin < 60) return `${diffMin}m ago`;
+      if (diffHour < 24) return `${diffHour}h ago`;
+      return `${Math.floor(diffHour / 24)}d ago`;
+    }
+
+    function getFreshnessStatus(isoString) {
+      if (!isoString) return "offline";
+      const date = new Date(isoString);
+      const now = new Date();
+      const diffMin = Math.floor((now - date) / 60000);
+      if (diffMin < 5) return "live";
+      if (diffMin < 30) return "stale";
+      return "offline";
+    }
+
+    function renderSources(sources) {
+      const container = document.getElementById('sources-list');
+      if (!container || !sources) return;
+      container.innerHTML = '';
+      Object.keys(sources).forEach(layerId => {
+        const source = sources[layerId];
+        const status = getFreshnessStatus(source.last_updated);
+        const timeAgo = formatRelativeTime(source.last_updated);
+        const div = document.createElement('div');
+        div.className = 'source-item';
+        div.innerHTML = `
+          <div class="source-header">
+            <span class="source-name">${source.source}</span>
+            <span class="source-status ${status}">${status.toUpperCase()}</span>
+          </div>
+          <div class="source-details">
+            <span style="color: var(--text-secondary);">[${source.source_type}]</span> ${timeAgo}
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    // === DATA FETCHING ===
+    function fetchSourcesInfo() {
+      fetch(`http://${host}:${port}/layers/sources`)
+        .then(res => res.json())
+        .then(sources => renderSources(sources))
+        .catch(err => console.warn("Sources error:", err.message));
+    }
+
+    function fetchTelemetry() {
+      fetch(`http://${host}:${port}/layers`)
+        .then(res => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.json();
+        })
+        .then(response => {
+          const data = response?.data || response;
+          render(data);
+          if (response?.sources) renderSources(response.sources);
+          updateStats(data);
+        })
+        .catch(err => console.warn("Telemetry:", err.message));
+    }
+
+    function updateStats(data) {
+      const statsContainer = document.getElementById('stats-display');
+      if (!data || !Array.isArray(data)) {
+        statsContainer.innerHTML = '';
+        return;
+      }
+      const counts = {};
+      data.forEach(p => {
+        counts[p.source] = (counts[p.source] || 0) + 1;
+      });
+      const total = data.length;
+      statsContainer.innerHTML = `
+        <div class="stat-item">
+          <span class="stat-dot ${total > 0 ? 'healthy' : 'offline'}"></span>
+          <span class="stat-label">TOT:</span>
+          <span class="stat-count">${total}</span>
+        </div>
+      `;
+    }
+
+    // === RENDER MAP DATA ===
+    // === RENDER MAP DATA ===
+    function render(data) {
+      let flatData = [];
+      if (!Array.isArray(data)) {
+        Object.keys(data).forEach(layerName => {
+          if (Array.isArray(data[layerName])) {
+            data[layerName].forEach(item => {
+              item.source = item.source || layerName;
+              flatData.push(item);
+            });
+          }
+        });
+      } else {
+        flatData = data;
+      }
+
+      const activeKeys = new Set();
+      const geoJSONLayers = {};
+
+      flatData.forEach(p => {
+        const sourceLower = p.source.toLowerCase();
+        const chk = document.getElementById(`chk-${sourceLower}`);
+        if (chk && !chk.checked) return;
+
+        // Si tiene geometría GeoJSON (zonas de drones), renderizar como polígono
+        if (p.geometry && p.type === "zone") {
+          const zoneKey = sourceLower + "-" + p.name;
+          activeKeys.add(zoneKey);
+
+          if (geoJSONLayers[zoneKey]) {
+            map.removeLayer(geoJSONLayers[zoneKey]);
+          }
+
+          const zoneColor = p.color || getColor(sourceLower);
+          const zoneStyle = {
+            color: zoneColor,
+            fillColor: zoneColor,
+            fillOpacity: 0.25,
+            weight: 2,
+            opacity: 0.8
+          };
+
+          const geojsonLayer = L.geoJSON(p.geometry, {
+            style: zoneStyle
+          }).addTo(map);
+
+          // Añadir popup con info de la zona
+          const zoneInfo = buildZonePopup(p);
+          geojsonLayer.bindPopup(zoneInfo);
+
+          geojsonLayer.on('click', () => {
+            showEntityDetails(p);
+          });
+
+          geoJSONLayers[zoneKey] = geojsonLayer;
+          return;
+        }
+
+        // Renderizado para puntos normales
+        if (!p.lat || !p.lon) return;
+
+        const key = sourceLower + "-" + (p.id || p.lat + "_" + p.lon);
+        activeKeys.add(key);
+
+        if (state[key]) {
+          state[key].setLatLng([parseFloat(p.lat), parseFloat(p.lon)]);
+          state[key].bindPopup(buildPopup(p));
+        } else {
+          const isAircraft = p.subtype === "aircraft" || sourceLower === "adsb" || sourceLower === "enaire";
+
+          if (isAircraft) {
+            const heading = p.heading || p.track || 0;
+            const rotation = (heading + 360) % 360;
+            const aircraftColor = p.color || getColor(sourceLower);
+
+            const airplaneIcon = L.divIcon({
+              className: 'airplane-marker',
+              html: `<svg viewBox="0 0 24 24" style="transform: rotate(${rotation}deg); width: 20px; height: 20px;" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="${aircraftColor}" stroke="#000" stroke-width="0.5"/>
+              </svg>`,
+              iconSize: [20, 20],
+              iconAnchor: [10, 10]
+            });
+
+            state[key] = L.marker([parseFloat(p.lat), parseFloat(p.lon)], {
+              icon: airplaneIcon
+            }).addTo(map);
+          } else {
+            state[key] = L.circleMarker([parseFloat(p.lat), parseFloat(p.lon)], {
+              radius: 5,
+              color: getColor(sourceLower),
+              fillColor: getColor(sourceLower),
+              fillOpacity: 0.8,
+              weight: 1
+            }).addTo(map);
+          }
+
+          state[key].bindPopup(buildPopup(p));
+
+          // Click handler to show in right panel
+          state[key].on('click', () => {
+            showEntityDetails(p);
+          });
+        }
+      });
+
+      // Cleanup removed markers
+      Object.keys(state).forEach(key => {
+        if (!activeKeys.has(key)) {
+          map.removeLayer(state[key]);
+          delete state[key];
+        }
+      });
+
+      // Cleanup removed GeoJSON layers
+      Object.keys(geoJSONLayers).forEach(key => {
+        if (!activeKeys.has(key)) {
+          map.removeLayer(geoJSONLayers[key]);
+          delete geoJSONLayers[key];
+        }
+      });
+    }
+
+    // === BUILD ZONE POPUP (for drone zones) ===
+    function buildZonePopup(p) {
+      const zoneColor = p.color || getColor(p.source);
+      let content = `<div class="popup-title" style="color: ${zoneColor}">${p.name || 'ZONA DRONES'}</div>`;
+
+      content += `<table class="popup-table">`;
+      content += `<tr><td>Tipo:</td><td>${p.subtype || p.capa || 'N/A'}</td></tr>`;
+      content += `<tr><td>Categoría:</td><td>${p.capa || 'N/A'}</td></tr>`;
+
+      // Añadir información adicional si existe
+      if (p.info) {
+        const infoKeys = Object.keys(p.info).slice(0, 5);
+        infoKeys.forEach(key => {
+          if (p.info[key]) {
+            content += `<tr><td>${key}:</td><td>${p.info[key]}</td></tr>`;
+          }
+        });
+      }
+      content += `</table>`;
+      content += `<div class="popup-source"><i>${p.source} - ZONA DE VUELO</i></div>`;
+      return content;
+    }
+
+    // === SHOW ENTITY DETAILS ===
+    function showEntityDetails(p) {
+      const container = document.getElementById('selected-entity');
+      const popupColor = p.color || getColor(p.source);
+
+      let html = `<div class="popup-title" style="color: ${popupColor}; margin-bottom: 12px;">${p.name || p.id || 'UNKNOWN'}</div>`;
+
+      if (p.subtype === "aircraft" || p.source.toLowerCase() === "adsb" || p.source.toLowerCase() === "enaire") {
+        html += `<table class="popup-table">`;
+        if (p.registration) html += `<tr><td>Matrícula:</td><td>${p.registration}</td></tr>`;
+        if (p.aircraft_type) html += `<tr><td>Aeronave:</td><td>${p.aircraft_type}</td></tr>`;
+        if (p.operator) html += `<tr><td>Operador:</td><td>${p.operator}</td></tr>`;
+        if (p.country) html += `<tr><td>País:</td><td>${p.country}</td></tr>`;
+        if (p.alt) html += `<tr><td>Altitud:</td><td>${p.alt} ft</td></tr>`;
+        if (p.speed || p.gs) html += `<tr><td>Velocidad:</td><td>${Math.round(p.speed || p.gs)} kts</td></tr>`;
+        if (p.heading || p.track) html += `<tr><td>Rumbo:</td><td>${Math.round(p.heading || p.track)}°</td></tr>`;
+        html += `<tr><td>Fuente:</td><td>${p.source}</td></tr>`;
+        html += `</table>`;
+      } else {
+        html += `<div style="font-size: 11px;">
+          <div><b>Tipo:</b> ${p.subtype || 'N/A'}</div>
+          <div><b>Fuente:</b> ${p.source}</div>
+          ${p.id ? `<div><b>ID:</b> ${p.id}</div>` : ''}
+          <div><b>Coords:</b> ${p.lat?.toFixed(4)}, ${p.lon?.toFixed(4)}</div>
+        </div>`;
+      }
+
+      container.innerHTML = html;
+
+      // Log activity
+      const activityLog = document.getElementById('activity-log');
+      const time = new Date().toLocaleTimeString();
+      activityLog.innerHTML = `<div style="color: var(--text-secondary);">[${time}] ${p.name || p.id} (${p.source})</div>` + activityLog.innerHTML;
+    }
+
+    // === LAYER TOGGLE ===
+    function toggle(layer) {
+      const chk = document.getElementById(`chk-${layer}`);
+      if (!chk) return;
+
+      fetch(`http://${host}:${port}/layer/${layer}/toggle`)
+        .then(res => res.json())
+        .then(data => {
+          chk.checked = data.enabled;
+        })
+        .catch(err => console.error(`Toggle error [${layer}]:`, err.message));
+    }
+
+    // === KEYBOARD SHORTCUTS ===
+    window.addEventListener('keydown', function(e) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'j') {
+        e.preventDefault();
+        toggle('custom');
+      }
+    });
+
+    // === INITIALIZATION ===
+    fetchTelemetry();
+    fetchSourcesInfo();
+    setInterval(fetchTelemetry, 2000);
+    setInterval(fetchSourcesInfo, 10000);
+  </script>
+</body>
+</html>
