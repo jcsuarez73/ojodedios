@@ -1088,11 +1088,14 @@
       attributionControl: false
     }).setView([40.4, -3.7], 5);
 
-    // Dark basemap - CartoDB Dark Matter
+    // Dark basemap - CartoDB Dark Matter (gris oscuro)
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
       maxZoom: 19,
       subdomains: 'abcd'
     }).addTo(map);
+
+    // Aplicar filtro para hacer el mapa más gris ( menos negro, más gris oscuro )
+    document.getElementById('map').style.filter = 'brightness(0.85) saturate(0.7) hue-rotate(0deg)';
 
     // === STATE ===
     let state = {};
@@ -1121,6 +1124,20 @@
       };
       return colors[source.toLowerCase()] || '#ffffff';
     }
+
+    // === ZONE COLORS (para zonas ENAIRE) ===
+    const ZONA_COLORES = {
+      'aerodromo': '#ffaa00',           // Naranja - Aeródromos
+      'espacio_controlado': '#3b82f6',  // Azul - FIZ/EAC
+      'notam': '#f97316',               // Naranja oscuro - NOTAM
+      'vuelo_fotografico': '#eab308',   // Amarillo - RVF
+      'aeromodelismo': '#a855f7',       // Púrpura - Aeromodelismo
+      'zona_aerodromo': '#22c55e',      // Verde - ZG Aeródromos
+      'zona_restringida': '#ef4444',    // Rojo - ZG Restringidas
+      'infraestructura': '#6b7280',    // Gris - Infraestruturas
+      'zona_aero': '#ffaa00',           // Naranja - ZG Aero
+      'zona_urbana': '#f43f5e'          // Rosa - Zonas urbanas
+    };
 
     // === MATRIX SOUND EFFECT - Metallic Fragments ===
     let audioCtx = null;
@@ -1389,7 +1406,10 @@
         if (chk && !chk.checked) return;
 
         // Si tiene geometría GeoJSON (zonas de drones), renderizar como polígono
-        if (p.geometry && p.type === "zone") {
+        // Renderiza como zona si es Polygon/MultiPolygon INDEPENDIENTEMENTE del type
+        const geomType = p.geometry?.type;
+        const esZona = geomType === "Polygon" || geomType === "MultiPolygon";
+        if (p.geometry && esZona) {
           const zoneKey = sourceLower + "-" + p.name;
           activeKeys.add(zoneKey);
 
@@ -1397,13 +1417,40 @@
             map.removeLayer(geoJSONLayers[zoneKey]);
           }
 
-          const zoneColor = p.color || getColor(sourceLower);
+          // Obtener color de la zona - usar el color del tipo de zona de ENAIRE
+          let zoneColor = p.color || getColor(sourceLower);
+
+          // Mapeo de colores para zonas ENAIRE (más visibles sobre fondo gris oscuro)
+          const zonaColores = {
+            // Tipos de zonas ENAIRE
+            'aerodromo': '#ffaa00',           // Naranja - Aeródromos
+            'espacio_controlado': '#3b82f6',  // Azul - FIZ/EAC
+            'notam': '#f97316',               // Naranja oscuro - NOTAM
+            'vuelo_fotografico': '#eab308',   // Amarillo - RVF
+            'aeromodelismo': '#a855f7',       // Púrpura - Aeromodelismo
+            'zona_aerodromo': '#22c55e',      // Verde - ZG Aeródromos
+            'zona_restringida': '#ef4444',    // Rojo - ZG Restringidas
+            'infraestructura': '#6b7280',    // Gris - Infraestruturas
+            'zona_aero': '#ffaa00',           // Naranja - ZG Aero
+            'zona_urbana': '#f43f5e'          // Rosa - Zonas urbanas
+          };
+
+          // Si es zona de drones, usar el color del subtipo
+          if (sourceLower === 'drones' && p.subtype && zonaColores[p.subtype]) {
+            zoneColor = zonaColores[p.subtype];
+          }
+
+          // Estilo optimizado para fondo gris oscuro
+          // Usar color más brillante para el borde que contraste bien
           const zoneStyle = {
-            color: zoneColor,
-            fillColor: zoneColor,
-            fillOpacity: 0.25,
-            weight: 2,
-            opacity: 0.8
+            color: zoneColor,                          // Color del borde
+            fillColor: zoneColor,                     // Color de relleno
+            fillOpacity: 0.4,                         // Opacidad del relleno
+            weight: 2,                                // Grosor del borde
+            opacity: 0.95,                            // Opacidad del borde
+            dashArray: null,                          // Línea sólida
+            lineJoin: 'round',                        // Uniones redondeadas
+            lineCap: 'round'
           };
 
           const geojsonLayer = L.geoJSON(p.geometry, {
@@ -1489,24 +1536,55 @@
 
     // === BUILD ZONE POPUP (for drone zones) ===
     function buildZonePopup(p) {
-      const zoneColor = p.color || getColor(p.source);
-      let content = `<div class="popup-title" style="color: ${zoneColor}">${p.name || 'ZONA DRONES'}</div>`;
+      // Obtener el color correcto para la zona
+      let zoneColor = p.color || getColor(p.source);
+      if (p.subtype && ZONA_COLORES[p.subtype]) {
+        zoneColor = ZONA_COLORES[p.subtype];
+      }
+
+      // Nombre descriptivo de la zona
+      const nombresZonas = {
+        'aerodromo': 'Aeródromo',
+        'espacio_controlado': 'Espacio Controlado (FIZ)',
+        'notam': 'NOTAM',
+        'vuelo_fotografico': 'Vuelo Fotográfico',
+        'aeromodelismo': 'Aeromodelismo',
+        'zona_aerodromo': 'ZG Aeródromo',
+        'zona_restringida': 'Zona Restringida',
+        'infraestructura': 'Infraestructura',
+        'zona_aero': 'ZG Aero',
+        'zona_urbana': 'Zona Urbana'
+      };
+
+      let content = `<div class="popup-title" style="color: ${zoneColor}">${p.name || nombresZonas[p.subtype] || 'ZONA ENAIRE'}</div>`;
 
       content += `<table class="popup-table">`;
-      content += `<tr><td>Tipo:</td><td>${p.subtype || p.capa || 'N/A'}</td></tr>`;
+      content += `<tr><td>Tipo:</td><td>${nombresZonas[p.subtype] || p.subtype || 'N/A'}</td></tr>`;
       content += `<tr><td>Categoría:</td><td>${p.capa || 'N/A'}</td></tr>`;
 
-      // Añadir información adicional si existe
+      // Añadir información de altitud si existe
       if (p.info) {
-        const infoKeys = Object.keys(p.info).slice(0, 5);
-        infoKeys.forEach(key => {
-          if (p.info[key]) {
+        // Buscar campos relevantes de altitud
+        const altFields = ['DISTVERTLOWER_VAL', 'DISTVERTUPPER_VAL', 'LOWER_VAL', 'UPPER_VAL', 'NIVEL_INF', 'NIVEL_SUP'];
+        altFields.forEach(key => {
+          if (p.info[key] !== undefined && p.info[key] !== null) {
             content += `<tr><td>${key}:</td><td>${p.info[key]}</td></tr>`;
+          }
+        });
+
+        // Añadir otros campos útiles
+        const otherFields = ['TYPE_CODE', 'ACTIVITY', 'REMARKS_TXT', 'IDENT_TXT'];
+        otherFields.forEach(key => {
+          if (p.info[key] !== undefined && p.info[key] !== null) {
+            const val = String(p.info[key]);
+            if (val && val.length < 100) {
+              content += `<tr><td>${key}:</td><td>${val}</td></tr>`;
+            }
           }
         });
       }
       content += `</table>`;
-      content += `<div class="popup-source"><i>${p.source} - ZONA DE VUELO</i></div>`;
+      content += `<div class="popup-source"><i>${p.source} - ZONA DE VUELO UAS</i></div>`;
       return content;
     }
 

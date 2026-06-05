@@ -16,7 +16,7 @@ API backend construida con **FastAPI** que agrega datos de múltiples fuentes/ca
 - **Puerto**: 8095
 - **Python**: 3.11
 - **Contenedor**: Docker
-- **APIs externas**: N2YO, OpenSky, Celestrak, AISStream, Enaire
+- **APIs externas**: N2YO, OpenSky, Celestrak, AISStream, Enaire, adsb.lol, ENAIRE Drones
 
 ## Estructura del Proyecto
 
@@ -65,7 +65,7 @@ ojo_backend/
 | thousandeyes | Network monitoring |
 | races | Carreras/Eventos |
 | aisstream | Barcos (AIS marine traffic) |
-| drones | Drones |
+| drones | Zonas de vuelo de drones (ENAIRE) - Polígonos GeoJSON |
 | downdetector | Estado de servicios |
 
 ## Endpoints API
@@ -134,3 +134,101 @@ uvicorn api.main:app --host 0.0.0.0 --port 8095 --reload
 2. Crear `layer.py` con clase que herede de base
 3. Importar y registrar en `core/registry.py`
 4. La capa debe tener `id` y `enabled`
+
+## Capa Drones (Zonas ENAIRE)
+
+La capa `drones` obtiene zonas de vuelo de drones de la API de ENAIRE. Se consultan **dos servidores**:
+
+### MapServer (capas principales)
+- **URL**: `https://servais.enaire.es/insignias/rest/services/NSF/Drones_ZG_Aero_V0/MapServer`
+- **Capas disponibles**:
+  - ID 0: Aeródromos
+  - ID 1: ZG_EAC_FIZ (Espacio Controlado)
+  - ID 2: NOTAM (Avisos)
+  - ID 3: ZG_RVF (Restringido Vuelo Fotográfico)
+  - ID 4: Aeromodelismo
+  - ID 6: ZG_Aeródromos
+  - ID 10: ZG_Restringidas
+
+### FeatureServer (capas adicionales)
+- **URL**: `https://servais.enaire.es/insignia/rest/services/NSF_SRV/SRV_UAS_ZG_V1/FeatureServer`
+- **Capas disponibles**:
+  - ID 0: ZG_Infraestructuras
+  - ID 2: ZG_Aero
+  - ID 3: ZG_Urbano
+
+### Capas totales disponibles (10):
+1. Aeromodelismo
+2. Aerodromos
+3. NOTAM
+4. ZG_aerodromos
+5. ZG_EAC_FIZ
+6. ZG_Restringidas
+7. ZG_RVF (restringido vuelo fotográfico)
+8. ZG_Infraestructuras
+9. ZG_Urbano
+
+### Métricas de Zonas (2026-06-06)
+- **Total zonas cargadas**: ~2000 (límite del sistema)
+- **ZG_EAC_FIZ**: 101 zonas (Espacio Controlado)
+- **ZG_RVF**: 119 zonas
+- **ZG_Restringidas**: 108 zonas
+- **NOTAM**: 184 zonas
+
+### Corrección aplicada (2026-06-06)
+
+**Problema**: Las zonas de drones (polígonos) se renderizaban con solo 2 coordenadas en lugar de las 186+ originales.
+
+**Causa raíz**: La función `convertir_geom_a_geojson` creaba una estructura GeoJSON incorrecta. El estándar GeoJSON para Polygon requiere:
+```json
+{"type": "Polygon", "coordinates": [ring]}  // ring = [[lon,lat], ...]
+```
+Pero el código generaba:
+```json
+{"type": "Polygon", "coordinates": [[lon,lat], ...]}  // Sin el array de anillos
+```
+
+**Solución**: En `layers/drones/layer.py`, cambiar la línea de retorno de:
+```python
+return {"type": "Polygon", "coordinates": new_coords}
+```
+a:
+```python
+return {"type": "Polygon", "coordinates": [new_coords]}
+```
+
+**Archivo**: `layers/drones/layer.py`, función `convertir_geom_a_geojson()`, línea ~185
+
+### Formato de salida
+
+```json
+{
+  "source": "drones",
+  "type": "zone",
+  "subtype": "zona_aerodromo",
+  "name": "LEBL",
+  "geometry": {"type": "Polygon", "coordinates": [...]},
+  "color": "#ffaa00",
+  "info": {
+    "lower": 45,
+    "upper": 900,
+    "lowerReference": "AGL",
+    "type": "REQ_AUTHORIZATION"
+  }
+}
+```
+
+## Colores por Altitud (Aviones)
+
+Las capas `adsb` y `enaire` incluyen colores según la altitud del avión:
+
+| Altitud | Color | Hue |
+|---------|-------|-----|
+| < 500 ft | 🔴 Rojo | 1 |
+| 500 ft | 🟠 Naranja | 30 |
+| 2,000 ft | 🟡 Amarillo | 60 |
+| 5,000 ft | 🟢 Verde | 120 |
+| 10,000 ft | 🔵 Cian | 180 |
+| 20,000 ft | 🔵 Azul | 240 |
+| 40,000 ft | 🔴 Magenta | 300 |
+| 60,000+ ft | 🔴 Rojo | 360 |
