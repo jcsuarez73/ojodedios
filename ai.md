@@ -135,7 +135,15 @@ uvicorn api.main:app --host 0.0.0.0 --port 8095 --reload
 3. Importar y registrar en `core/registry.py`
 4. La capa debe tener `id` y `enabled`
 
-## Capa Drones (Zonas ENAIRE)
+## Capa Drones (Zonas ENAIRE) - Análisis comparativo
+
+La aplicación ENAIRE Drones (drones.enaire.es) usa:
+- Mapa base: ArcGIS
+- Tipos de zonas: Polígonos, puntos, círculos, líneas
+- Sistema de simbología NOTAM v2.2
+- Colores: Naranja para UI, simbología específica por tipo de zona
+
+### Nuestra implementación actual
 
 La capa `drones` obtiene zonas de vuelo de drones de la API de ENAIRE. Se consultan **dos servidores**:
 
@@ -232,3 +240,28 @@ Las capas `adsb` y `enaire` incluyen colores según la altitud del avión:
 | 20,000 ft | 🔵 Azul | 240 |
 | 40,000 ft | 🔴 Magenta | 300 |
 | 60,000+ ft | 🔴 Rojo | 360 |
+
+## Cambios Recientes (2026-06-08)
+
+### Opacidad Zonas ENAIRE
+- Las zonas de restricciones de drones/ENaire ahora tienen **80% de opacidad** (antes 55%)
+- Archivo: `static/index.html`, línea ~1451
+
+### Botón MAP (DARK/RELIEVE)
+- Toggle para cambiar mapa base entre CartoDB Dark y relieve topográfico
+- Ubicación: Debajo del botón LAYERS
+- Relieve usa OpenStreetMap US Hillshade (gratuito)
+- Implementado con 6 consultas paralelas y dedup por hex ICAO
+
+### Cobertura Global ADSB.lol
+- La API de adsb.lol limita consultas a ~2500nm por punto
+- NO existe endpoint global - solo consultas por radio
+- Solución implementada: 6 consultas en paralelo a diferentes puntos del mundo:
+  1. Europa central (lat: 48, lon: 10, radius: 2500)
+  2. Atlántico norte (lat: 45, lon: -30, radius: 2500)
+  3. USA centro (lat: 40, lon: -100, radius: 2500)
+  4. Latinoamérica (lat: -15, lon: -60, radius: 2500)
+  5. USA East Coast / Caribe (lat: 30, lon: -80, radius: 2500)
+  6. Japón / Asia Este (lat: 35, lon: 140, radius: 2500)
+- Deduplicación por hex ICAO para evitar duplicados
+- Archivo: `layers/adsb/layer.py`

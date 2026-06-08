@@ -442,6 +442,57 @@
       color: var(--text-muted);
     }
 
+    /* === MAP BASE TOGGLE === */
+    .mapbase-toggle {
+      position: fixed;
+      top: 24px;
+      left: 360px;
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: auto;
+    }
+
+    .mapbase-toggle label {
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .mapbase-switch {
+      position: relative;
+      width: 80px;
+      height: 20px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-primary);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .mapbase-switch::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 36px;
+      height: 14px;
+      background: var(--text-secondary);
+      border-radius: 8px;
+      transition: all 0.3s;
+      box-shadow: 0 0 8px var(--glow-color);
+    }
+
+    .mapbase-switch.windy-mode::after {
+      left: 40px;
+    }
+
+    .mapbase-switch:hover {
+      border-color: var(--border-secondary);
+    }
+
     /* === LEFT PANEL TOGGLE === */
     .panel-toggle {
       position: fixed;
@@ -1007,6 +1058,15 @@
     <span>LAYERS</span>
   </div>
 
+  <!-- MAP BASE TOGGLE -->
+  <div class="mapbase-toggle">
+    <label>MAP</label>
+    <div class="mapbase-switch" id="mapbaseSwitch" onclick="cycleMapBase()">
+      <span id="mapbase-label" style="position:absolute;top:2px;left:8px;font-size:8px;color:var(--text-primary);letter-spacing:0.1em;">DARK</span>
+    </div>
+    <label>RELIEVE</label>
+  </div>
+
   <!-- RIGHT PANEL -->
   <div class="right-panel" id="rightPanel">
     <div class="panel-header">
@@ -1081,6 +1141,19 @@
       host = "localhost";
     }
 
+    // === MAP BASE LAYERS ===
+    const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 19,
+      subdomains: 'abcd'
+    });
+
+    // OpenStreetMap US Hillshade - relieve/topografía gratuito
+    const relieveLayer = L.tileLayer('https://tiles.openstreetmap.us/raster/hillshade/{z}/{x}/{y}.png', {
+      maxZoom: 15,
+      opacity: 0.6,
+      attribution: 'OpenStreetMap US'
+    });
+
     // === MAP SETUP ===
     const map = L.map('map', {
       preferCanvas: true,
@@ -1088,11 +1161,44 @@
       attributionControl: false
     }).setView([40.4, -3.7], 5);
 
-    // Dark basemap - CartoDB Dark Matter (gris oscuro)
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19,
-      subdomains: 'abcd'
-    }).addTo(map);
+    // Dark basemap - CartoDB Dark Matter (gris oscuro) - inicial
+    darkLayer.addTo(map);
+
+    // Estado del mapa base
+    let currentMapBase = 'DARK';
+    let activeBaseLayer = darkLayer;
+    const mapBases = ['DARK', 'RELIEVE'];
+
+    // Función para cambiar el mapa base
+
+    function cycleMapBase() {
+      const switchEl = document.getElementById('mapbaseSwitch');
+      const labelEl = document.getElementById('mapbase-label');
+
+      // Quitar capa actual
+      if (activeBaseLayer) {
+        map.removeLayer(activeBaseLayer);
+      }
+
+      // Cambiar al siguiente mapa base
+      const currentIdx = mapBases.indexOf(currentMapBase);
+      currentMapBase = mapBases[(currentIdx + 1) % mapBases.length];
+
+      // Aplicar el nuevo mapa base
+      if (currentMapBase === 'RELIEVE') {
+        activeBaseLayer = relieveLayer;
+        switchEl.classList.add('windy-mode');
+        labelEl.textContent = 'RELIEVE';
+      } else {
+        activeBaseLayer = darkLayer;
+        switchEl.classList.remove('windy-mode');
+        labelEl.textContent = 'DARK';
+      }
+
+      activeBaseLayer.addTo(map);
+      console.log("[MAP] Map base switched to:", currentMapBase);
+    }
+
 
     // Aplicar filtro para hacer el mapa más gris ( menos negro, más gris oscuro )
     document.getElementById('map').style.filter = 'brightness(0.85) saturate(0.7) hue-rotate(0deg)';
@@ -1410,6 +1516,7 @@
         const geomType = p.geometry?.type;
         const esZona = geomType === "Polygon" || geomType === "MultiPolygon";
         if (p.geometry && esZona) {
+          console.log("[RENDER] Renderizando zona:", p.name, "type:", geomType, "subtype:", p.subtype);
           const zoneKey = sourceLower + "-" + p.name;
           activeKeys.add(zoneKey);
 
@@ -1435,19 +1542,21 @@
             'zona_urbana': '#f43f5e'          // Rosa - Zonas urbanas
           };
 
-          // Si es zona de drones, usar el color del subtipo
-          if (sourceLower === 'drones' && p.subtype && zonaColores[p.subtype]) {
+          // Si es zona de drones (source=drones o source=enaire con subtype de zona), usar el color del subtipo
+          const esZonaDrones = (sourceLower === 'drones' || sourceLower === 'enaire') &&
+                               p.subtype && zonaColores[p.subtype];
+          if (esZonaDrones) {
             zoneColor = zonaColores[p.subtype];
           }
 
           // Estilo optimizado para fondo gris oscuro
-          // Usar color más brillante para el borde que contraste bien
+          // Colores más vivos y opacos para mejor visibilidad
           const zoneStyle = {
             color: zoneColor,                          // Color del borde
             fillColor: zoneColor,                     // Color de relleno
-            fillOpacity: 0.4,                         // Opacidad del relleno
-            weight: 2,                                // Grosor del borde
-            opacity: 0.95,                            // Opacidad del borde
+            fillOpacity: 0.80,                         // Opacidad del relleno (80%)
+            weight: 2.5,                              // Grosor del borde
+            opacity: 1.0,                              // Opacidad del borde (sólido)
             dashArray: null,                          // Línea sólida
             lineJoin: 'round',                        // Uniones redondeadas
             lineCap: 'round'
@@ -1470,7 +1579,11 @@
         }
 
         // Renderizado para puntos normales
-        if (!p.lat || !p.lon) return;
+        // Saltar entidades sin coordenadas válidas
+        if (!p.lat || !p.lon || isNaN(parseFloat(p.lat)) || isNaN(parseFloat(p.lon))) {
+          console.log("[RENDER] Saltando entidad sin coords:", p.source, p.name, "lat:", p.lat, "lon:", p.lon);
+          return;
+        }
 
         const key = sourceLower + "-" + (p.id || p.lat + "_" + p.lon);
         activeKeys.add(key);
@@ -1482,6 +1595,10 @@
           const isAircraft = p.subtype === "aircraft" || sourceLower === "adsb" || sourceLower === "enaire";
 
           if (isAircraft) {
+            // Debug para ver si se renderizan aviones
+            if (!state[key]) {
+              console.log("[RENDER] Avión:", p.name, "lat:", p.lat, "lon:", p.lon, "alt:", p.alt);
+            }
             const heading = p.heading || p.track || 0;
             const rotation = (heading + 360) % 360;
             const aircraftColor = p.color || getColor(sourceLower);
